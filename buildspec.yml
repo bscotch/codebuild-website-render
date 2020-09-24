@@ -1,0 +1,25 @@
+version: 0.2
+
+# env:
+#   variables:
+phases:
+  install:
+    runtime-versions:
+      nodejs: latest
+  pre_build:
+    commands:
+      - npm ci
+  build:
+    commands:
+      - node index.js
+  # post_build:
+  #   commands:
+
+artifacts:
+  files:
+    - 'prerendered/**/*'
+
+cache:
+  paths:
+    # Minimize re-downloading stuff from npm
+    - "node_modules/**/*"
