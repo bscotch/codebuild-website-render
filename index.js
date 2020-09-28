@@ -25,7 +25,8 @@
 
 
 const pptr = require('puppeteer');
-const sitemapper = new require('sitemapper')();
+const Sitemapper = require('sitemapper');
+const sitemapper = new Sitemapper();
 const fs = require('fs');
 const path = require('path');
 const events = require('events');
