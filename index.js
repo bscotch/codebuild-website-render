@@ -17,6 +17,10 @@
  *    Target 'folder' (key prefix) within the S3 bucket + prefix
  *    defined in the CodeBuild project.
  *  + HEADERS (CSV, e.g. "Authentication: Basic XYZ,My-Custom-Header: MyCustomHeaderValue")
+ *  + MAX_SYNCHRONOUS (default 20)
+ *    In effect, the number of tabs to open at once for rendering.
+ *    The renderer will ensure that there are always this many pages
+ *    being rendered at once.
  */
 
 
