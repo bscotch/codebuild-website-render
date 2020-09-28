@@ -16,12 +16,12 @@
  *  + OUT_FOLDER (e.g. "dev")
  *    Target 'folder' (key prefix) within the S3 bucket + prefix
  *    defined in the CodeBuild project.
+ *  + HEADERS (CSV, e.g. "Authentication: Basic XYZ,My-Custom-Header: MyCustomHeaderValue")
  */
 
 
 const pptr = require('puppeteer');
-const Sitemapper = require('sitemapper');
-const sitemapper = new Sitemapper();
+const sitemapper = new require('sitemapper')();
 const fs = require('fs');
 const path = require('path');
 const events = require('events');
@@ -75,11 +75,17 @@ function getParameters(){
     .map(ensureSlashPrefix);
   assert(sitemapPath || paths.length, "Sitemap path or paths list must be provided.");
   const outFolder = ensureSlashPrefix(process.env.OUT_FOLDER||'');
+  const headers = (process.env.HEADERS || '').split(/\s*,\s*/g).filter(x=>x).reduce((head,current)=>{
+      const [key,value] = current.split(/\s*:\s*/).map(s=>s.trim());
+      head[key] = value;
+      return head;
+    },{});
   return {
     baseUrl,
     sitemapPath,
     paths,
-    outFolder
+    outFolder,
+    headers
   }
 }
 
@@ -100,20 +106,16 @@ const maxSynchronous = process.env.MAX_SYNCHRONOUS || 20;
 
 /**
  * @param {import('puppeteer').Browser} browser 
- * @param {string} baseUrl
+ * @param {Parameters} params
  * @param {string} url
  */
-async function fetchPage(browser,baseUrl,url){
+async function fetchPage(browser,params,url){
   url = url.replace(/^\//,''); // normalize incoming urls
-  const fullUrl = `${baseUrl}/${url}`;
+  const fullUrl = `${params.baseUrl}/${url}`;
   const page = await browser.newPage();
-  // page.setExtraHTTPHeaders({
-  //   'Prerender-Password': process.env.PASSWORD, // for rate limit bypass
-  //   'Authorization': `Basic ${process.env.DEV_SERVER_BASIC_AUTH}`
-  // });
+  page.setExtraHTTPHeaders(params.headers);
   await page.goto(fullUrl,{waitUntil:'networkidle0'});
   const html = await page.content();
-  console.log('FETCHED',url);
   await page.close();
   return html;
 }
@@ -135,7 +137,7 @@ async function prerenderPaths (){
     }
     const url = urls[pathPointer];
     return pathPointer >= urls.length ||
-      fetchPage(browser,params.baseUrl,url)
+      fetchPage(browser,params,url)
         .then(html=>writeRenderedPage(params,url,html))
         .then(renderNextUrl); 
   };
