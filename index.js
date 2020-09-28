@@ -129,7 +129,7 @@ async function prerenderPaths (){
   const params = getParameters();
   const urls = await getPaths(params);
 
-  const browser = await pptr.launch();
+  const browser = await pptr.launch({args:['--no-sandbox']});
   // Ensure there are ALWAYS maxSynchronous in queue
   // (each time one ends another one is added).
 
