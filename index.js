@@ -77,10 +77,12 @@ async function writeRenderedPage(params,url,html){
   fs.mkdirSync(dir,{recursive:true});
   fs.writeFileSync(fullPath, params.gzip ? await gzip(html) : html);
   if(params.computeScriptHashes){
-    const hashes = computeInlineScriptHashes(html);
-    const metadataPath = fullPath.replace(/html$/,'json');
-    const metadataJson = JSON.stringify({scriptHashes:hashes});
-    fs.writeFileSync(metadataPath,metadataJson);
+    const metadataPath = fullPath.replace(/\.html(\.gz)?$/,'json');
+    if(metadataPath.endsWith('json')){
+      const hashes = computeInlineScriptHashes(html);
+      const metadataJson = JSON.stringify({scriptHashes:hashes});
+      fs.writeFileSync(metadataPath,metadataJson);
+    }
   }
   emitter.emit('saved',{url});
 }
