@@ -21,6 +21,13 @@
  *    In effect, the number of tabs to open at once for rendering.
  *    The renderer will ensure that there are always this many pages
  *    being rendered at once.
+ *  + COMPUTE_SCRIPT_HASHES (default true)
+ *    If "true", compute SHA hashes for each script in the HTML,
+ *    saving in a .json file (contents: `{scriptHashes:[]}`) with the same
+ *    name & path as the html file. These can be used via the 'Content-Security-Policy'
+ *    to set super-strict Javascript rules while whitelisting your inline scripts.
+ *  + GZIP (default true)
+ *    If "true", gzip all files before writing, saving with the additional ".gz" extension.
  */
 
 
@@ -30,25 +37,52 @@ const sitemapper = new Sitemapper();
 const fs = require('fs');
 const path = require('path');
 const events = require('events');
+const crypto = require('crypto');
+const zlib = require('zlib');
+const {promisify} = require('util');
+
+const gzip = promisify(zlib.gzip);
 
 const outDir = 'rendered';
 
 const emitter = new events.EventEmitter();
+
+function computeInlineScriptHashes(html){
+  const scripts = html.match(/<script>(.*?)<\/script>/sg);
+  const hashes = [];
+  for(const script of scripts){
+    const hash = crypto
+      .createHash('sha256')
+      .update(script.replace(/<\/?script>/g,''),'utf8')
+      .digest('base64');
+    hashes.push(hash);
+  }
+  return hashes;
+}
 
 /**
  * @param {Parameters} params
  * @param {string} url 
  * @param {string} html 
  */
-function writeRenderedPage(params,url,html){
+async function writeRenderedPage(params,url,html){
   let fullPath = path.join(outDir,params.outFolder,url);
   if(!fullPath.endsWith('.html')){
     fullPath = path.join(fullPath,'index.html');
   }
+  if(params.gzip){
+    fullPath += '.gz';
+  }
   const dir = path.dirname(fullPath);
   fs.mkdirSync(dir,{recursive:true});
-  fs.writeFileSync(fullPath,html);
-  emitter.emit('write',{url});
+  fs.writeFileSync(fullPath, params.gzip ? await gzip(html) : html);
+  if(params.computeScriptHashes){
+    const hashes = computeInlineScriptHashes(html);
+    const metadataPath = fullPath.replace(/html$/,'json');
+    const metadataJson = JSON.stringify({scriptHashes:hashes});
+    fs.writeFileSync(metadataPath,metadataJson);
+  }
+  emitter.emit('saved',{url});
 }
 
 /**
@@ -66,31 +100,47 @@ function ensureSlashPrefix(path){
 }
 
 function getParameters(){
+
+  // BASE_URL
   const baseUrl = process.env.BASE_URL;
   assert(
     baseUrl.match(/^https?:\/\/[^/]+$/),
     "BASE_URL must match the pattern ^https?://[^/]+$"
   );
+
+  // SITEMAP_PATH
   const sitemapPath = process.env.SITEMAP_PATH
     ? ensureSlashPrefix(process.env.SITEMAP_PATH)
     : null;
+
+  // PATHS
   const paths = (process.env.PATHS||'')
     .split(/\s*,\s*/g)
     .filter(x=>x)
     .map(ensureSlashPrefix);
+
   assert(sitemapPath || paths.length, "Sitemap path or paths list must be provided.");
+  // OUT_FOLDER
+
   const outFolder = ensureSlashPrefix(process.env.OUT_FOLDER||'');
+  // HEADERS
+
   const headers = (process.env.HEADERS || '').split(/\s*,\s*/g).filter(x=>x).reduce((head,current)=>{
       const [key,value] = current.split(/\s*:\s*/).map(s=>s.trim());
       head[key] = value;
       return head;
     },{});
+
   return {
     baseUrl,
     sitemapPath,
     paths,
     outFolder,
-    headers
+    headers,
+    computeScriptHashes:
+      process.env.COMPUTE_SCRIPT_HASHES == 'true',
+    gzip:
+      process.env.GZIP == 'true'
   }
 }
 
@@ -152,7 +202,7 @@ async function prerenderPaths (){
   }
 
   const rendered = [];
-  emitter.on('write',info=>{
+  emitter.on('saved',info=>{
     rendered.push(info.url);
     if(rendered.length == urls.length){
       browser.close();
