@@ -21,12 +21,12 @@
  *    In effect, the number of tabs to open at once for rendering.
  *    The renderer will ensure that there are always this many pages
  *    being rendered at once.
- *  + COMPUTE_SCRIPT_HASHES (default true)
+ *  + COMPUTE_SCRIPT_HASHES
  *    If "true", compute SHA hashes for each script in the HTML,
  *    saving in a .json file (contents: `{scriptHashes:[]}`) with the same
  *    name & path as the html file. These can be used via the 'Content-Security-Policy'
  *    to set super-strict Javascript rules while whitelisting your inline scripts.
- *  + GZIP (default true)
+ *  + GZIP
  *    If "true", gzip all files before writing, saving with the additional ".gz" extension.
  */
 
@@ -180,6 +180,16 @@ async function prerenderPaths (){
   const urls = await getPaths(params);
 
   const browser = await pptr.launch({args:['--no-sandbox']});
+  const failOnUncaughtError = err=>{
+    browser.close();
+    console.log(err);
+    process.exit(1);
+  }
+
+  process.on('unhandledRejection', failOnUncaughtError);
+  process.on('uncaughtException', failOnUncaughtError);
+
+
   // Ensure there are ALWAYS maxSynchronous in queue
   // (each time one ends another one is added).
 
