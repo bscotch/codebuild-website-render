@@ -48,6 +48,9 @@ const emitter = new events.EventEmitter();
 
 function computeInlineScriptHashes(html){
   const scripts = html.match(/<script>(.*?)<\/script>/sg);
+  if(!scripts){
+    return [];
+  }
   const hashes = [];
   for(const script of scripts){
     const hash = crypto
