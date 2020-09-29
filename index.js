@@ -68,6 +68,9 @@ function computeInlineScriptHashes(html){
  * @param {string} html 
  */
 async function writeRenderedPage(params,url,html){
+  if(!html){
+    return emitter.emit('saved',{url});
+  }
   let fullPath = path.join(outDir,params.outFolder,url);
   if(!fullPath.endsWith('.html')){
     fullPath = path.join(fullPath,'index.html');
@@ -173,8 +176,11 @@ async function fetchPage(browser,params,url){
   const fullUrl = `${params.baseUrl}/${url}`;
   const page = await browser.newPage();
   page.setExtraHTTPHeaders(params.headers);
-  await page.goto(fullUrl,{waitUntil:'networkidle0'});
-  const html = await page.content();
+  const response = await page.goto(fullUrl,{waitUntil:'networkidle0'});
+  let html;
+  if(response.status()<300){
+    html = await page.content();
+  }
   await page.close();
   return html;
 }
