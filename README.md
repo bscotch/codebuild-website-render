@@ -32,7 +32,7 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
   Files are output into a folder called `"rendered"`. Optionally output into
   a subfolder.
 + `HEADERS` (CSV, e.g. "Authentication: Basic XYZ,My-Custom-Header: MyCustomHeaderValue")  
-+ `MAX_SYNCHRONOUS` (default 20)  
++ `MAX_SYNCHRONOUS` (default 100)  
   In effect, the number of tabs to open at once for rendering.
   The renderer will ensure that there are always this many pages
   being rendered at once.

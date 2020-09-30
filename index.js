@@ -13,7 +13,7 @@
  *  + OUT_FOLDER (e.g. "dev")
  *    Subdirectory into which files should go, within the "rendered" folder.
  *  + HEADERS (CSV, e.g. "Authentication: Basic XYZ, My-Custom-Header: MyCustomHeaderValue")
- *  + MAX_SYNCHRONOUS (default 20)
+ *  + MAX_SYNCHRONOUS (default 100)
  *    In effect, the number of tabs to open at once for rendering.
  *    The renderer will ensure that there are always this many pages
  *    being rendered at once.
@@ -151,7 +151,7 @@ async function getPaths(parameters){
   return urls;
 }
 
-const maxSynchronous = process.env.MAX_SYNCHRONOUS || 20;
+const maxSynchronous = process.env.MAX_SYNCHRONOUS || 100;
 
 /**
  * @param {import('puppeteer').Browser} browser 
