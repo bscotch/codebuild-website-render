@@ -163,8 +163,23 @@ async function fetchPage(browser,params,url){
   try{
     const fullUrl = url;
     const page = await browser.newPage();
+    // No reason to download images or fonts, since we just want the resulting HTML
+    await page.setRequestInterception(true);
+    page.on('request',request=>{
+      const accepts = request.headers().accept;
+      if(accepts.match(/^image/) || url.match(/\.(woff2?|otf|ttf)$/)){
+        request.abort();
+      }
+      else{
+        request.continue();
+      }
+    });
     await page.setExtraHTTPHeaders(params.headers);
-    const response = await page.goto(fullUrl,{waitUntil:'networkidle0'});
+    // Instead of potentially waiting forever, resolve once most requests
+    // are resolved and the wait another couple seconds
+    const response = await page.goto(fullUrl,{waitUntil:'networkidle2',timeout:10000});
+    await page.waitFor(2000);
+
     if(response.status()<300){
       html = await page.content();
       console.log("SUCCESS",url);
