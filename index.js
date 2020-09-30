@@ -167,15 +167,15 @@ async function fetchPage(browser,params,url){
     const response = await page.goto(fullUrl,{waitUntil:'networkidle0'});
     if(response.status()<300){
       html = await page.content();
-      console.info("SUCCESS",url);
+      console.log("SUCCESS",url);
     }
     else{
-      console.warn("WARN",url,'returned status',response.status());
+      console.log("WARN",url,'returned status',response.status());
     }
     await page.close();
   }
   catch(err){
-    console.error(err);
+    console.log(err);
   }
   return html;
 }
@@ -187,7 +187,7 @@ async function prerenderPaths (){
   const browser = await pptr.launch({args:['--no-sandbox']});
   const failOnUncaughtError = err=>{
     browser.close();
-    console.error(err);
+    console.log(err);
     process.exit(1);
   }
 
