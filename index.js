@@ -160,9 +160,9 @@ const maxSynchronous = process.env.MAX_SYNCHRONOUS || 100;
  */
 async function fetchPage(browser,params,url){
   let html;
+  const page = await browser.newPage();
   try{
     const fullUrl = url;
-    const page = await browser.newPage();
     // No reason to download images or fonts, since we just want the resulting HTML
     await page.setRequestInterception(true);
     page.on('request',request=>{
@@ -186,11 +186,11 @@ async function fetchPage(browser,params,url){
     else{
       console.log("WARN",url,'returned status',response.status());
     }
-    await page.close();
   }
   catch(err){
     console.log(err);
   }
+  await page.close();
   return html;
 }
 
