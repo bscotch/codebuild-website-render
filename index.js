@@ -138,6 +138,9 @@ function getParameters(){
       return head;
     },{});
 
+  console.log(process.env.HEADERS);
+  console.log(headers);
+
   return {
     baseUrl,
     sitemapPath,
@@ -172,16 +175,24 @@ const maxSynchronous = process.env.MAX_SYNCHRONOUS || 20;
  * @param {string} url
  */
 async function fetchPage(browser,params,url){
-  url = url.replace(/^\//,''); // normalize incoming urls
-  const fullUrl = `${params.baseUrl}/${url}`;
-  const page = await browser.newPage();
-  page.setExtraHTTPHeaders(params.headers);
-  const response = await page.goto(fullUrl,{waitUntil:'networkidle0'});
   let html;
-  if(response.status()<300){
-    html = await page.content();
+  try{
+    url = url.replace(/^\//,''); // normalize incoming urls
+    const fullUrl = `${params.baseUrl}/${url}`;
+    const page = await browser.newPage();
+    await page.setExtraHTTPHeaders(params.headers);
+    const response = await page.goto(fullUrl,{waitUntil:'networkidle0'});
+    if(response.status()<300){
+      html = await page.content();
+    }
+    else{
+      console.log("WARN",url,'returned status',response.status());
+    }
+    await page.close();
   }
-  await page.close();
+  catch(err){
+    console.log(err);
+  }
   return html;
 }
 
