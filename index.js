@@ -114,7 +114,7 @@ function getParameters(){
     .split(/\s*,\s*/g)
     .filter(x=>x);
 
-  assert(sitemapPath || paths.length, "Sitemap path or paths list must be provided.");
+  assert((sitemapPath && new URL(sitemapPath)) || paths.length, "Sitemap path or paths list must be provided.");
   // OUT_FOLDER
 
   const outFolder = ensureSlashPrefix(process.env.OUT_FOLDER||'');
