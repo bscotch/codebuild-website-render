@@ -7,12 +7,9 @@
  * 
  * ## PARAMETERS (via env)
  * 
- *  + BASE_URL (e.g. "https://www.bscotch.net")
- *  + SITEMAP_PATH (e.g. "/sitemap.xml")
+ *  + SITEMAP_PATH (e.g. "https://www.bscotch.net/sitemap.xml")
  *    Either this or paths must be specified.
- *    Must be a path relative to BASE_URL
- *  + PATHS (CSV, e.g. "/,/about,/blog/post-1")
- *    Must be relative to BASE_URL
+ *  + PATHS (CSV, e.g. "https://www.bscotch.net/,https://www.bscotch.net/about,https://www.bscotch.net/blog/post-1")
  *  + OUT_FOLDER (e.g. "dev")
  *    Subdirectory into which files should go, within the "rendered" folder.
  *  + HEADERS (CSV, e.g. "Authentication: Basic XYZ, My-Custom-Header: MyCustomHeaderValue")
@@ -39,6 +36,7 @@ const events = require('events');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const {promisify} = require('util');
+const URL = require('url').URL;
 
 const gzip = promisify(zlib.gzip);
 
@@ -71,7 +69,7 @@ async function writeRenderedPage(params,url,html){
   if(!html){
     return emitter.emit('saved',{url});
   }
-  let fullPath = path.join(outDir,params.outFolder,url);
+  let fullPath = path.join(outDir,params.outFolder,url.replace(new URL(url).origin,''));
   if(!fullPath.endsWith('.html')){
     fullPath = path.join(fullPath,'index.html');
   }
@@ -108,23 +106,13 @@ function ensureSlashPrefix(path){
 
 function getParameters(){
 
-  // BASE_URL
-  const baseUrl = process.env.BASE_URL;
-  assert(
-    baseUrl.match(/^https?:\/\/[^/]+$/),
-    "BASE_URL must match the pattern ^https?://[^/]+$"
-  );
-
   // SITEMAP_PATH
-  const sitemapPath = process.env.SITEMAP_PATH
-    ? ensureSlashPrefix(process.env.SITEMAP_PATH)
-    : null;
+  const sitemapPath = process.env.SITEMAP_PATH;
 
   // PATHS
   const paths = (process.env.PATHS||'')
     .split(/\s*,\s*/g)
-    .filter(x=>x)
-    .map(ensureSlashPrefix);
+    .filter(x=>x);
 
   assert(sitemapPath || paths.length, "Sitemap path or paths list must be provided.");
   // OUT_FOLDER
@@ -138,11 +126,7 @@ function getParameters(){
       return head;
     },{});
 
-  console.log(process.env.HEADERS);
-  console.log(headers);
-
   return {
-    baseUrl,
     sitemapPath,
     paths,
     outFolder,
@@ -161,7 +145,7 @@ async function getPaths(parameters){
   const urls = [...parameters.paths];
   if(parameters.sitemapPath){
     // Download it!
-    const {sites} = (await sitemapper.fetch(`${parameters.baseUrl}${parameters.sitemapPath}`));
+    const {sites} = (await sitemapper.fetch(parameters.sitemapPath));
     urls.push(...sites);
   }
   return urls;
@@ -177,8 +161,7 @@ const maxSynchronous = process.env.MAX_SYNCHRONOUS || 20;
 async function fetchPage(browser,params,url){
   let html;
   try{
-    url = url.replace(/^\//,''); // normalize incoming urls
-    const fullUrl = `${params.baseUrl}/${url}`;
+    const fullUrl = url;
     const page = await browser.newPage();
     await page.setExtraHTTPHeaders(params.headers);
     const response = await page.goto(fullUrl,{waitUntil:'networkidle0'});

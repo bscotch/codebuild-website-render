@@ -21,12 +21,10 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
 
 #### Required
 
-+ `BASE_URL` (e.g. "https://www.bscotch.net")
-+ `SITEMAP_PATH` (e.g. "/sitemap.xml")  
++ `SITEMAP_PATH` (e.g. "https://www.bscotch.net/sitemap.xml")  
   Either this or paths must be specified.
-  Must be a path relative to `BASE_URL`, and must only point to HTML files.
 + `PATHS` (CSV, e.g. "/,/about,/blog/post-1")  
-  Must be relative to BASE_URL. Must be specified if `SITEMAP_PATH` is not.
+  Must be specified if `SITEMAP_PATH` is not.
   Must all be HTML files.
 
 #### Optional
