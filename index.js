@@ -166,11 +166,7 @@ async function fetchPage(browser,params,url){
     // No reason to download images or fonts, since we just want the resulting HTML
     await page.setRequestInterception(true);
     page.on('request',request=>{
-      const accepts = request.headers().accept;
-      console.log(request.headers());
-      if( (accepts && accepts.match(/^image/)) ||
-          url.match(/\.(woff2?|otf|ttf|png|webp|gif|jpe?g|bmp|mp4|mp3|m4a)$/)
-      ){
+      if( url.match(/\.(woff2?|otf|ttf|png|webp|gif|jpe?g|bmp|mp4|mp3|m4a)$/)){
         request.abort();
       }
       else{
