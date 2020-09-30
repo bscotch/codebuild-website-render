@@ -167,7 +167,10 @@ async function fetchPage(browser,params,url){
     await page.setRequestInterception(true);
     page.on('request',request=>{
       const accepts = request.headers().accept;
-      if(accepts.match(/^image/) || url.match(/\.(woff2?|otf|ttf)$/)){
+      console.log(request.headers());
+      if( accepts?.match(/^image/) ||
+          url.match(/\.(woff2?|otf|ttf|png|webp|gif|jpe?g|bmp|mp4|mp3|m4a)$/)
+      ){
         request.abort();
       }
       else{
