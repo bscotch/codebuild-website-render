@@ -176,7 +176,7 @@ async function fetchPage(browser,params,url){
     await page.setExtraHTTPHeaders(params.headers);
     // Instead of potentially waiting forever, resolve once most requests
     // are resolved and the wait another couple seconds
-    const response = await page.goto(fullUrl,{waitUntil:'networkidle2',timeout:10000});
+    const response = await page.goto(fullUrl,{waitUntil:'networkidle2',timeout:25000});
     await page.waitFor(2000);
 
     if(response.status()<300){
