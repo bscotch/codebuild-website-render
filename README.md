@@ -31,7 +31,10 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
 + `OUT_FOLDER` (e.g. "dev" or "dev/my-version")  
   Files are output into a folder called `"rendered"`. Optionally output into
   a subfolder.
-+ `HEADERS` (CSV, e.g. "Authentication: Basic XYZ,My-Custom-Header: MyCustomHeaderValue")  
++ `HEADERS` (CSV, e.g. "Authentication: Basic XYZ,My-Custom-Header: MyCustomHeaderValue")
++ `WAIT_FOR_SELECTOR`  
+  A CSS selector that, if specified, will cause the renderer to wait until an
+  element matching that selector exists on the page.
 + `MAX_SYNCHRONOUS` (default 50)  
   In effect, the number of tabs to open at once for rendering.
   The renderer will ensure that there are always this many pages
@@ -57,6 +60,7 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
     + Select Ubuntu (Amazon Linux might also work, but it's untested)
     + Select the latest runtimes etc.
     + Create or choose a Service Role. You'll need to ensure it has the proper IAM permissions.
+    + Set any of the above environment variables to specify how the renderer should behave.
   + **Buildspec**
     + Choose "Use a Buildspec file"
   + **Artifacts**
@@ -71,7 +75,9 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
 ### Trigger the renderer
 
 You can manually run the CodeBuild project to render your pages, or call it using the AWS command line tools,
-or (ideally) automate running the CodeBuild project as part of your deployment process.
+or (ideally) automate running the CodeBuild project as part of your deployment process. Set the default
+parameters in your CodeBuild project's Environment Variables, and optionally override them on a per-request
+basis.
 
 ### Output
 

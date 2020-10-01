@@ -1,8 +1,9 @@
 {
-  "name": "codebuild-prerenderer",
+  "name": "codebuild-website-prerender",
   "version": "0.1.0",
-  "description": "AWS CodeBuild prerenderer",
+  "description": "Render webpages using AWS CodeBuild.",
   "main": "index.js",
+  "private":true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,6 +14,13 @@
     "puppeteer": "^5.3.1",
     "sitemapper": "^3.0.5"
   },
+  "keywords":[
+    "spa",
+    "single page app",
+    "ssr",
+    "server-side render",
+    "codebuild"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/bscotch/codebuild-website-prerender"
