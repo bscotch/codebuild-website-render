@@ -13,7 +13,7 @@
  *  + OUT_FOLDER (e.g. "dev")
  *    Subdirectory into which files should go, within the "rendered" folder.
  *  + HEADERS (CSV, e.g. "Authentication: Basic XYZ, My-Custom-Header: MyCustomHeaderValue")
- *  + MAX_SYNCHRONOUS (default 100)
+ *  + MAX_SYNCHRONOUS (default 50)
  *    In effect, the number of tabs to open at once for rendering.
  *    The renderer will ensure that there are always this many pages
  *    being rendered at once.
@@ -24,6 +24,8 @@
  *    to set super-strict Javascript rules while whitelisting your inline scripts.
  *  + GZIP
  *    If "true", gzip all files before writing, saving with the additional ".gz" extension.
+ *  + WAIT_FOR_SELECTOR
+ *    Wait until an element matching this selector exists on the page before rendering.
  */
 
 
@@ -151,7 +153,7 @@ async function getPaths(parameters){
   return urls;
 }
 
-const maxSynchronous = process.env.MAX_SYNCHRONOUS || 100;
+const maxSynchronous = process.env.MAX_SYNCHRONOUS || 50;
 
 /**
  * @param {import('puppeteer').Browser} browser 
@@ -164,12 +166,11 @@ async function fetchPage(browser,params,url){
   try{
     const fullUrl = url;
     // No reason to download images or fonts, since we just want the resulting HTML
-    await page.setRequestInterception(true);
-    page.on('request',request=>{
-      if( url.match(/\.(woff2?|otf|ttf|png|webp|gif|jpe?g|bmp|mp4|mp3|m4a)$/)){
+    await page.setRequestInterception(true)
+    page.on('request', request => {
+      if (['image', 'stylesheet', 'media', 'websocket','font','other'].includes(request.resourceType())) {
         request.abort();
-      }
-      else{
+      } else {
         request.continue();
       }
     });
@@ -177,7 +178,12 @@ async function fetchPage(browser,params,url){
     // Instead of potentially waiting forever, resolve once most requests
     // are resolved and the wait another couple seconds
     const response = await page.goto(fullUrl,{waitUntil:'networkidle2',timeout:25000});
-    await page.waitFor(2000);
+    if(process.env.WAIT_FOR_SELECTOR){
+      await page.waitForSelector(process.env.WAIT_FOR_SELECTOR);
+    }
+    else{
+      await page.waitFor(2000);
+    }
 
     if(response.status()<300){
       html = await page.content();
@@ -188,6 +194,7 @@ async function fetchPage(browser,params,url){
     }
   }
   catch(err){
+    console.log("ERROR",url);
     console.log(err);
   }
   await page.close();
