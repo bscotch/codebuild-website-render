@@ -35,10 +35,17 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
 + `WAIT_FOR_SELECTOR`  
   A CSS selector that, if specified, will cause the renderer to wait until an
   element matching that selector exists on the page.
++ `WAIT_MILLISECONDS`  
+  Number of milliseconds to wait after a page is retrieved, *after*
+  `WAIT_FOR_SELECTOR` if set. Useful for pages that 
 + `MAX_SYNCHRONOUS` (default 50)  
   In effect, the number of tabs to open at once for rendering.
   The renderer will ensure that there are always this many pages
   being rendered at once.
++ `INLINE_CSS`  
+  If `true`, a CSS inliner will be run on the final HTML prior to
+  writing to file. Style tags will be removed, but link tags pointing
+  to stylesheets will be kept.
 + `COMPUTE_SCRIPT_HASHES`  
   If "true", compute SHA hashes for each script in each HTML file,
   saving to a .json file (contents: `{scriptHashes:[]}`) with the same

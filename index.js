@@ -4,34 +4,12 @@
  * environment variables, either set up in the CodeBuild
  * project or passed in via an AWS CodeBuild API call via the
  * environmentVariablesOverride parameter.
- * 
- * ## PARAMETERS (via env)
- * 
- *  + SITEMAP_PATH (e.g. "https://www.bscotch.net/sitemap.xml")
- *    Either this or paths must be specified.
- *  + PATHS (CSV, e.g. "https://www.bscotch.net/,https://www.bscotch.net/about,https://www.bscotch.net/blog/post-1")
- *  + OUT_FOLDER (e.g. "dev")
- *    Subdirectory into which files should go, within the "rendered" folder.
- *  + HEADERS (CSV, e.g. "Authentication: Basic XYZ, My-Custom-Header: MyCustomHeaderValue")
- *  + MAX_SYNCHRONOUS (default 50)
- *    In effect, the number of tabs to open at once for rendering.
- *    The renderer will ensure that there are always this many pages
- *    being rendered at once.
- *  + COMPUTE_SCRIPT_HASHES
- *    If "true", compute SHA hashes for each script in the HTML,
- *    saving in a .json file (contents: `{scriptHashes:[]}`) with the same
- *    name & path as the html file. These can be used via the 'Content-Security-Policy'
- *    to set super-strict Javascript rules while whitelisting your inline scripts.
- *  + GZIP
- *    If "true", gzip all files before writing, saving with the additional ".gz" extension.
- *  + WAIT_FOR_SELECTOR
- *    Wait until an element matching this selector exists on the page before rendering.
  */
 
 
 const pptr = require('puppeteer');
-const Sitemapper = require('sitemapper');
-const sitemapper = new Sitemapper();
+const Sitemapper = require('sitemapper').default;
+const sitemapper = new Sitemapper({});
 const fs = require('fs');
 const path = require('path');
 const events = require('events');
@@ -39,12 +17,24 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 const {promisify} = require('util');
 const URL = require('url').URL;
+const dotenv = require('dotenv');
+const inliner = require('inline-css');
+dotenv.config();
 
 const gzip = promisify(zlib.gzip);
 
 const outDir = 'rendered';
 
 const emitter = new events.EventEmitter();
+
+/**
+ * @param {number} ms 
+ */
+async function wait(ms){
+  return new Promise(resolve=>{
+    setTimeout(resolve,ms);
+  });
+}
 
 function computeInlineScriptHashes(html){
   const scripts = html.match(/<script>(.*?)<\/script>/sg);
@@ -78,6 +68,10 @@ async function writeRenderedPage(params,url,html){
   if(params.gzip){
     fullPath += '.gz';
   }
+  if(process.env.INLINE_CSS=='true'){
+    html = await inliner(html,{url: new URL(url).origin, removeLinkTags:false})
+  }
+
   const dir = path.dirname(fullPath);
   fs.mkdirSync(dir,{recursive:true});
   fs.writeFileSync(fullPath, params.gzip ? await gzip(html) : html);
@@ -181,8 +175,8 @@ async function fetchPage(browser,params,url){
     if(process.env.WAIT_FOR_SELECTOR){
       await page.waitForSelector(process.env.WAIT_FOR_SELECTOR);
     }
-    else{
-      await page.waitFor(2000);
+    if(process.env.WAIT_MILLISECONDS){
+      await wait(Number(process.env.WAIT_MILLISECONDS));
     }
 
     if(response.status()<300){
@@ -204,6 +198,9 @@ async function fetchPage(browser,params,url){
 async function prerenderPaths (){
   const params = getParameters();
   const urls = await getPaths(params);
+  if(process.env.MAX_PAGES){
+    urls.splice(Number(process.env.MAX_PAGES)-1);
+  }
 
   const browser = await pptr.launch({args:['--no-sandbox']});
   const failOnUncaughtError = err=>{
