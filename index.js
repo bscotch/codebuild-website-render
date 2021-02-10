@@ -18,7 +18,10 @@ const {promisify} = require('util');
 const URL = require('url').URL;
 const dotenv = require('dotenv');
 const inliner = require('inline-css');
+const version = JSON.parse(fs.readFileSync(path.join(__dirname,'package.json'),'utf-8')).version;
 dotenv.config();
+
+console.log({version});
 
 const gzip = promisify(zlib.gzip);
 
