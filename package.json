@@ -13,8 +13,8 @@
     "axios": "^0.21.1",
     "dotenv": "^8.2.0",
     "inline-css": "^3.0.0",
-    "puppeteer": "^5.5.0",
-    "sitemapper": "^3.1.10"
+    "puppeteer": "^7.0.4",
+    "sitemapper": "^3.1.12"
   },
   "keywords": [
     "spa",
@@ -28,6 +28,6 @@
     "url": "https://github.com/bscotch/codebuild-website-prerender"
   },
   "devDependencies": {
-    "@types/node": "^14.14.20"
+    "@types/node": "^14.14.25"
   }
 }

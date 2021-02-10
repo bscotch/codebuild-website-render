@@ -6,7 +6,6 @@
  * environmentVariablesOverride parameter.
  */
 
-
 const pptr = require('puppeteer');
 const Sitemapper = require('sitemapper').default;
 const sitemapper = new Sitemapper({});
@@ -116,7 +115,10 @@ function getParameters(){
   const outFolder = ensureSlashPrefix(process.env.OUT_FOLDER||'');
   // HEADERS
 
-  const headers = (process.env.HEADERS || '').split(/\s*,\s*/g).filter(x=>x).reduce((head,current)=>{
+  const headers = (process.env.HEADERS || '')
+    .split(/\s*,\s*/g)
+    .filter(x=>x)
+    .reduce((head,current)=>{
       const [key,value] = current.split(/\s*:\s*/).map(s=>s.trim());
       head[key] = value;
       return head;
