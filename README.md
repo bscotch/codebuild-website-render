@@ -45,7 +45,7 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
 + `INLINE_CSS`  
   If `true`, a CSS inliner will be run on the final HTML prior to
   writing to file. Style tags will be removed, but link tags pointing
-  to stylesheets will be kept.
+  to stylesheets will be kept. External CSS will not be inlined.
 + `COMPUTE_SCRIPT_HASHES`  
   If "true", compute SHA hashes for each script in each HTML file,
   saving to a .json file (contents: `{scriptHashes:[]}`) with the same

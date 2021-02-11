@@ -71,7 +71,14 @@ async function writeRenderedPage(params,url,html){
     fullPath += '.gz';
   }
   if(process.env.INLINE_CSS=='true'){
-    html = await inliner(html,{url: new URL(url).origin, removeLinkTags:false})
+    html = await inliner(html,{
+      url: new URL(url).origin,
+      removeLinkTags:false,
+      applyLinkTags:false,
+      applyStyleTags:true,
+      removeStyleTags:true,
+      preserveMediaQueries:true,
+    });
   }
 
   const dir = path.dirname(fullPath);
@@ -165,18 +172,36 @@ async function fetchPage(browser,params,url){
   try{
     const fullUrl = url;
     // No reason to download images or fonts, since we just want the resulting HTML
-    await page.setRequestInterception(true)
-    page.on('request', request => {
-      if (['image', 'stylesheet', 'media', 'websocket','font','other'].includes(request.resourceType())) {
-        request.abort();
-      } else {
-        request.continue();
-      }
-    });
     await page.setExtraHTTPHeaders(params.headers);
+    await page.setRequestInterception(true);
+    page.on('request',
+      /** @param {pptr.HTTPRequest} request */
+      async request => {
+        try{
+          const typeWhitelist = ["document","stylesheet","script","xhr","fetch"];
+          const extensionWhitelist = ["js","css"]; // are 'other' type if prefetch
+          const isWhitelisted = typeWhitelist.includes(request.resourceType()) ||
+            request.url().match(new RegExp(`\\.(${extensionWhitelist.join("|")})\b`));
+          if (isWhitelisted) {
+            await request.continue();
+          }
+          else {
+            await request.abort();
+          }
+        }
+        catch(err){
+          console.log("INTERCEPT ERROR",err);
+        }
+      }
+    );
     // Instead of potentially waiting forever, resolve once most requests
     // are resolved and the wait another couple seconds
-    const response = await page.goto(fullUrl,{waitUntil:'networkidle2',timeout:25000});
+    page.on('console',msg=>{
+      if(msg._text=='JSHandle@error'){
+        console.log(msg);
+      }
+    });
+    const response = await page.goto(fullUrl, {waitUntil:'networkidle0'});
     if(process.env.WAIT_FOR_SELECTOR){
       await page.waitForSelector(process.env.WAIT_FOR_SELECTOR);
     }
