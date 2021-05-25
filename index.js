@@ -209,7 +209,7 @@ async function fetchPage(browser, params, url) {
     // Instead of potentially waiting forever, resolve once most requests
     // are resolved and the wait another couple seconds
     page.on('console', (msg) => {
-      if (msg?._text == 'JSHandle@error') {
+      if (msg?.text() == 'JSHandle@error') {
         console.log(msg.args?.()?.[0]?._remoteObject?.description);
       }
     });
