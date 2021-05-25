@@ -28,6 +28,14 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
   Must all be HTML files.
 
 #### Optional
++ `BLOCK_PATTERNS`  
+  A CSV of patterns (will be converted using `new RegExp(pattern)`) to test against
+  requested URLs. If any provided patterns match a URL, its request will be blocked.
+  This is useful for features like telemetry and error reporting, that you may not
+  want running during rendering.
++ `DEBUG`  
+  If `true`, debug info is logged to STDOUT for review. Useful for identifying
+  caching and other issues.
 + `OUT_FOLDER` (e.g. "dev" or "dev/my-version")  
   Files are output into a folder called `"rendered"`. Optionally output into
   a subfolder.

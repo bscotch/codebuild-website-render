@@ -23,13 +23,33 @@ const version = JSON.parse(
 ).version;
 dotenv.config();
 
-console.log({ version });
+const startTime = new Date();
+
+function debug(...args) {
+  if (process.env.DEBUG == 'true') {
+    console.log(...args);
+  }
+}
+
+function info(...args) {
+  console.log(...args);
+}
+
+info({ version });
 
 const gzip = promisify(zlib.gzip);
 
 const outDir = 'rendered';
 
 const emitter = new events.EventEmitter();
+const report = {
+  pagesRendered: 0,
+  secondsRequired: 0,
+  totalRequests: 0,
+  blockedRequests: 0,
+  cachedRequests: 0,
+  uncachedRequests: 0,
+};
 
 /**
  * @param {number} ms
@@ -103,6 +123,7 @@ async function writeRenderedPage(params, url, html) {
 
 /**
  * @typedef {ReturnType<getParameters>} Parameters
+ * @returns {asserts somethingTruthy}
  */
 
 function assert(somethingTruthy, messageIfFalse) {
@@ -115,12 +136,21 @@ function ensureSlashPrefix(path) {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
+function toCsv(string) {
+  return (string || '').split(/\s*,\s*/g).filter((x) => x);
+}
+
 function getParameters() {
   // SITEMAP_PATH
   const sitemapPath = process.env.SITEMAP_PATH;
 
+  // BLOCK_PATTERNS
+  const blockPatterns = toCsv(process.env.BLOCK_PATTERNS).map(
+    (p) => new RegExp(p)
+  );
+
   // PATHS
-  const paths = (process.env.PATHS || '').split(/\s*,\s*/g).filter((x) => x);
+  const paths = toCsv(process.env.PATHS);
 
   assert(
     (sitemapPath && new URL(sitemapPath)) || paths.length,
@@ -145,6 +175,7 @@ function getParameters() {
     paths,
     outFolder,
     headers,
+    blockPatterns,
     computeScriptHashes: process.env.COMPUTE_SCRIPT_HASHES == 'true',
     gzip: process.env.GZIP == 'true',
   };
@@ -177,11 +208,12 @@ async function fetchPage(browser, params, url) {
     const fullUrl = url;
     // No reason to download images or fonts, since we just want the resulting HTML
     await page.setExtraHTTPHeaders(params.headers);
-    await page.setRequestInterception(true);
+    await page.setRequestInterception(true, true);
     page.on(
       'request',
       /** @param {pptr.HTTPRequest} request */
       async (request) => {
+        report.totalRequests++;
         try {
           const typeWhitelist = [
             'document',
@@ -196,28 +228,46 @@ async function fetchPage(browser, params, url) {
             request
               .url()
               .match(new RegExp(`\\.(${extensionWhitelist.join('|')})\b`));
-          if (isWhitelisted) {
+          const isBlocked = params.blockPatterns.some((p) =>
+            p.test(request.url())
+          );
+          if (isWhitelisted && !isBlocked) {
             await request.continue();
           } else {
+            report.blockedRequests++;
+            if (isBlocked) {
+              debug('BLOCKED', request.url());
+            }
             await request.abort();
           }
         } catch (err) {
-          console.log('INTERCEPT ERROR', err);
+          console.error('INTERCEPT ERROR', err);
         }
       }
     );
+
+    page.on('requestfinished', (e) => {
+      if (e.response().fromCache()) {
+        report.cachedRequests++;
+      } else {
+        report.uncachedRequests++;
+      }
+      debug('CACHED?', e.response().fromCache(), e.url());
+    });
+
     // Instead of potentially waiting forever, resolve once most requests
     // are resolved and the wait another couple seconds
     page.on('console', (msg) => {
       if (msg?.text() == 'JSHandle@error') {
-        console.log(msg.args?.()?.[0]?._remoteObject?.description);
+        console.error('Error (console) on', url);
+        console.error(msg.args?.()?.[0]?._remoteObject?.description);
       }
     });
     const response = await page.goto(fullUrl, { waitUntil: 'networkidle0' });
     const selector = process.env.WAIT_FOR_SELECTOR;
     const waitMs = Number(process.env.WAIT_MILLISECONDS);
     if (selector) {
-      console.log('Waiting for selector', selector);
+      debug('Waiting for selector', selector);
       await page.waitForSelector(selector);
     }
     if (waitMs) {
@@ -226,13 +276,13 @@ async function fetchPage(browser, params, url) {
 
     if (response.status() < 300) {
       html = await page.content();
-      console.log('SUCCESS', url);
+      info('Success', url);
     } else {
-      console.log('WARN', url, 'returned status', response.status());
+      console.error('WARN', url, 'returned status', response.status());
     }
   } catch (err) {
-    console.log('ERROR', url);
-    console.log(err);
+    console.error('Error', url);
+    console.error(err);
   }
   await page.close();
   return html;
@@ -242,13 +292,13 @@ async function prerenderPaths() {
   const params = getParameters();
   const urls = await getPaths(params);
   if (process.env.MAX_PAGES) {
-    urls.splice(Number(process.env.MAX_PAGES) - 1);
+    urls.splice(Number(process.env.MAX_PAGES));
   }
 
   const browser = await pptr.launch({ args: ['--no-sandbox'] });
   const failOnUncaughtError = (err) => {
     browser.close();
-    console.log(err);
+    console.error(err);
     process.exit(1);
   };
 
@@ -274,15 +324,26 @@ async function prerenderPaths() {
     );
   };
 
-  for (let i = 0; i < maxSynchronous; i++) {
-    renderNextUrl();
-  }
+  // Fully wait for the first page to ensure common resources
+  // get cached.
+  renderNextUrl();
+  emitter.once('saved', () => {
+    debug(
+      'First page fully loaded and saved; cache populated with universal content.'
+    );
+    for (let i = 1; i < maxSynchronous; i++) {
+      renderNextUrl();
+    }
+  });
 
   const rendered = [];
-  emitter.on('saved', (info) => {
-    rendered.push(info.url);
+  emitter.on('saved', (savedPage) => {
+    report.pagesRendered++;
+    rendered.push(savedPage.url);
     if (rendered.length == urls.length) {
       browser.close();
+      report.secondsRequired = (Date.now() - startTime.getTime()) / 1000;
+      info(JSON.stringify(report, null, 2));
     }
   });
 }
