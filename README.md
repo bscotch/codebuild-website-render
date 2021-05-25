@@ -33,6 +33,8 @@ for simple cases or via `environmentVariablesOverride` fields in the AWS CodeBui
   requested URLs. If any provided patterns match a URL, its request will be blocked.
   This is useful for features like telemetry and error reporting, that you may not
   want running during rendering.
++ `BLOCK_HOSTS`  
+  A CSV of host names (e.g. `ads.example.com`) for which all requests should be blocked.
 + `DEBUG`  
   If `true`, debug info is logged to STDOUT for review. Useful for identifying
   caching and other issues.

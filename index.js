@@ -149,6 +149,9 @@ function getParameters() {
     (p) => new RegExp(p)
   );
 
+  // BLOCK_HOSTS
+  const blockHosts = toCsv(process.env.BLOCK_HOSTS);
+
   // PATHS
   const paths = toCsv(process.env.PATHS);
 
@@ -176,6 +179,7 @@ function getParameters() {
     outFolder,
     headers,
     blockPatterns,
+    blockHosts,
     computeScriptHashes: process.env.COMPUTE_SCRIPT_HASHES == 'true',
     gzip: process.env.GZIP == 'true',
   };
@@ -213,30 +217,36 @@ async function fetchPage(browser, params, url) {
       'request',
       /** @param {pptr.HTTPRequest} request */
       async (request) => {
+        const requestUrl = new URL(request.url());
         report.totalRequests++;
+        debug('REQUESTED on', url, request.url());
         try {
-          const typeWhitelist = [
+          const typeAllowlist = [
             'document',
             'stylesheet',
             'script',
             'xhr',
             'fetch',
           ];
-          const extensionWhitelist = ['js', 'css']; // are 'other' type if prefetch
-          const isWhitelisted =
-            typeWhitelist.includes(request.resourceType()) ||
-            request
-              .url()
-              .match(new RegExp(`\\.(${extensionWhitelist.join('|')})\b`));
-          const isBlocked = params.blockPatterns.some((p) =>
-            p.test(request.url())
-          );
-          if (isWhitelisted && !isBlocked) {
+          const extensionAllowlist = ['js', 'css']; // are 'other' type if prefetch
+          const extensionBlocklist = ['woff2'];
+          const isAllowed =
+            typeAllowlist.includes(request.resourceType()) ||
+            requestUrl.pathname.match(
+              new RegExp(`\\.(${extensionAllowlist.join('|')})$`)
+            );
+          const isBlocked =
+            params.blockPatterns.some((p) => p.test(request.url())) ||
+            requestUrl.pathname.match(
+              new RegExp(`\\.(${extensionBlocklist.join('|')})$`)
+            ) ||
+            params.blockHosts.includes(requestUrl.host);
+          if (isAllowed && !isBlocked) {
             await request.continue();
           } else {
             report.blockedRequests++;
             if (isBlocked) {
-              debug('BLOCKED', request.url());
+              debug('BLOCKED on', url, request.url());
             }
             await request.abort();
           }
