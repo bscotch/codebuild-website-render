@@ -230,17 +230,24 @@ async function fetchPage(browser, params, url) {
           ];
           const extensionAllowlist = ['js', 'css']; // are 'other' type if prefetch
           const extensionBlocklist = ['woff2'];
-          const isAllowed =
-            typeAllowlist.includes(request.resourceType()) ||
-            requestUrl.pathname.match(
-              new RegExp(`\\.(${extensionAllowlist.join('|')})$`)
-            );
+          const isAllowedMethod = ['get', 'head', 'options'].includes(
+            request.method().toLowerCase()
+          );
           const isBlocked =
+            !isAllowedMethod ||
             params.blockPatterns.some((p) => p.test(request.url())) ||
             requestUrl.pathname.match(
               new RegExp(`\\.(${extensionBlocklist.join('|')})$`)
             ) ||
             params.blockHosts.includes(requestUrl.host);
+
+          const isAllowed =
+            !isBlocked &&
+            (typeAllowlist.includes(request.resourceType()) ||
+              requestUrl.pathname.match(
+                new RegExp(`\\.(${extensionAllowlist.join('|')})$`)
+              ));
+
           if (isAllowed && !isBlocked) {
             await request.continue();
           } else {
